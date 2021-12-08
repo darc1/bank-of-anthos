@@ -476,12 +476,16 @@ def create_app():
     def format_timestamp_day(timestamp):
         """ Format the input timestamp day in a human readable way """
         # TODO: time zones?
+        if ":" == timestamp[-3]:
+                timestamp = timestamp[:-3]+timestamp[-2:]
         date = datetime.datetime.strptime(timestamp, app.config['TIMESTAMP_FORMAT'])
         return date.strftime('%d')
 
     def format_timestamp_month(timestamp):
         """ Format the input timestamp month in a human readable way """
         # TODO: time zones?
+        if ":" == timestamp[-3]:
+                timestamp = timestamp[:-3]+timestamp[-2:]
         date = datetime.datetime.strptime(timestamp, app.config['TIMESTAMP_FORMAT'])
         return date.strftime('%b')
 
@@ -515,32 +519,37 @@ def create_app():
     app.config['TIMESTAMP_FORMAT'] = '%Y-%m-%dT%H:%M:%S.%f%z'
     app.config['SCHEME'] = os.environ.get('SCHEME', 'http')
 
-    # where am I?
-    metadata_url = 'http://metadata.google.internal/computeMetadata/v1/'
-    metadata_headers = {'Metadata-Flavor': 'Google'}
-    # get GKE cluster name
-    cluster_name = "unknown"
-    try:
-        req = requests.get(metadata_url + 'instance/attributes/cluster-name',
-                           headers=metadata_headers)
-        if req.ok:
-            cluster_name = str(req.text)
-    except (RequestException, HTTPError) as err:
-        app.logger.warning("Unable to capture GKE cluster name.")
+    if os.environ['VMWARE_ENV'] == 'true':
+        cluster_name = "vSphere"
+        pod_name = "frontend"
+        pod_zone = "none"
+    else:
+        # where am I?
+        metadata_url = 'http://metadata.google.internal/computeMetadata/v1/'
+        metadata_headers = {'Metadata-Flavor': 'Google'}
+        # get GKE cluster name
+        cluster_name = "unknown"
+        try:
+            req = requests.get(metadata_url + 'instance/attributes/cluster-name',
+                               headers=metadata_headers)
+            if req.ok:
+                cluster_name = str(req.text)
+        except (RequestException, HTTPError) as err:
+            app.logger.warning("Unable to capture GKE cluster name.")
 
-    # get GKE pod name
-    pod_name = "unknown"
-    pod_name = socket.gethostname()
+        # get GKE pod name
+        pod_name = "unknown"
+        pod_name = socket.gethostname()
 
-    # get GKE node zone
-    pod_zone = "unknown"
-    try:
-        req = requests.get(metadata_url + 'instance/zone',
-                           headers=metadata_headers)
-        if req.ok:
-            pod_zone = str(req.text.split("/")[3])
-    except (RequestException, HTTPError) as err:
-        app.logger.warning("Unable to capture GKE node zone.")
+        # get GKE node zone
+        pod_zone = "unknown"
+        try:
+            req = requests.get(metadata_url + 'instance/zone',
+                               headers=metadata_headers)
+            if req.ok:
+                pod_zone = str(req.text.split("/")[3])
+        except (RequestException, HTTPError) as err:
+            app.logger.warning("Unable to capture GKE node zone.")
 
     # register formater functions
     app.jinja_env.globals.update(format_currency=format_currency)
