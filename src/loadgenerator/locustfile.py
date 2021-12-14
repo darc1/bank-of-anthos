@@ -46,7 +46,7 @@ def signup_helper(locust, username):
                 "state":"WA",
                 "zip":"98103",
                 "ssn":"111-22-3333"}
-    with locust.client.post("/signup", data=userdata, catch_response=True) as response:
+    with locust.client.post("/signup", data=userdata, catch_response=True, verify=False) as response:
         found_token = False
         for r_hist in response.history:
             found_token |= r_hist.cookies.get('token') is not None
@@ -78,7 +78,7 @@ class AllTasks(TaskSequence):
             load the /login page
             fails if already logged on (redirects to /home)
             """
-            with self.client.get("/login", catch_response=True) as response:
+            with self.client.get("/login", catch_response=True, verify=False) as response:
                 for r_hist in response.history:
                     if r_hist.status_code > 200 and r_hist.status_code < 400:
                         response.failure("Got redirect")
@@ -89,7 +89,7 @@ class AllTasks(TaskSequence):
             load the /signup page
             fails if not logged on (redirects to /home)
             """
-            with self.client.get("/signup", catch_response=True) as response:
+            with self.client.get("/signup", catch_response=True, verify=False) as response:
                 for r_hist in response.history:
                     if r_hist.status_code > 200 and r_hist.status_code < 400:
                         response.failure("Got redirect")
@@ -118,6 +118,7 @@ class AllTasks(TaskSequence):
             on start, deposit a large balance into each account
             to ensure all payments are covered
             """
+            self.client.verify=False
             self.deposit(1000000)
 
         @task(10)
@@ -126,7 +127,7 @@ class AllTasks(TaskSequence):
             load the / page
             fails if not logged on (redirects to /login)
             """
-            with self.client.get("/", catch_response=True) as response:
+            with self.client.get("/", catch_response=True, verify=False) as response:
                 for r_hist in response.history:
                     if r_hist.status_code > 200 and r_hist.status_code < 400:
                         response.failure("Got redirect")
@@ -137,7 +138,7 @@ class AllTasks(TaskSequence):
             load the /home page (identical to /)
             fails if not logged on (redirects to /login)
             """
-            with self.client.get("/home", catch_response=True) as response:
+            with self.client.get("/home", catch_response=True, verify=False) as response:
                 for r_hist in response.history:
                     if r_hist.status_code > 200 and r_hist.status_code < 400:
                         response.failure("Got redirect")
@@ -154,7 +155,7 @@ class AllTasks(TaskSequence):
                            "uuid": generate_username()}
             with self.client.post("/payment",
                                   data=transaction,
-                                  catch_response=True) as response:
+                                  catch_response=True, verify=False) as response:
                 if response.url is None or "failed" in response.url:
                     response.failure("payment failed")
 
@@ -172,7 +173,7 @@ class AllTasks(TaskSequence):
                            "uuid": generate_username()}
             with self.client.post("/deposit",
                                   data=transaction,
-                                  catch_response=True) as response:
+                                  catch_response=True, verify=False) as response:
                 if "failed" in response.url:
                     response.failure("deposit failed")
 
@@ -184,7 +185,7 @@ class AllTasks(TaskSequence):
             """
             with self.client.post("/login", {"username":self.locust.username,
                                              "password":MASTER_PASSWORD},
-                                  catch_response=True) as response:
+                                  catch_response=True, verify=False) as response:
                 found_token = False
                 for r_hist in response.history:
                     found_token |= r_hist.cookies.get('token') is not None
@@ -200,7 +201,7 @@ class AllTasks(TaskSequence):
             fails if not logged in
             exits AuthenticatedTasks
             """
-            self.client.post("/logout")
+            self.client.post("/logout", verify=False)
             self.locust.username = None
             # go to UnauthenticatedTasks
             self.interrupt()
